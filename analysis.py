@@ -14,8 +14,10 @@ import zipfile
 import re
 import collections
 import sqlite3
+import itertools
 
 from io import BytesIO
+from xml.dom import minidom
 
 regex = re.compile("Qgs\w+")
 
@@ -29,12 +31,19 @@ cur.execute("CREATE TABLE counts ("
             "count INTEGER"
             ")")
 
-plugins = ["http://plugins.qgis.org/plugins/qgsexpressionsplus/version/0.3/download/",
-           "http://plugins.qgis.org/plugins/openlayers_plugin/version/1.3.3/download/"]
 
-def count_from_plugin(plugin):
-    print("Fetching {}".format(plugin))
-    r = requests.get(plugin)
+def get_plugins():
+    plugin_request = requests.get("http://plugins.qgis.org/plugins/plugins.xml?qgis=2.4")
+    xml = minidom.parseString(plugin_request.text)
+    plugins = xml.getElementsByTagName("pyqgis_plugin")
+    for plugin in plugins:
+        name = plugin.attributes["name"].value
+        url = plugin.getElementsByTagName("download_url")[0].childNodes[0].data
+        yield name, url
+
+def count_from_plugin(name, url):
+    print("Fetching {}".format(url))
+    r = requests.get(url)
     content = BytesIO(r.content)
     zip = zipfile.ZipFile(content)
     names = zip.namelist()
@@ -48,13 +57,21 @@ def count_from_plugin(plugin):
     counts = collections.Counter(words)
 
     for word, count in counts.items():
-        sql = "INSERT INTO counts VALUES('{}','{}',{})".format(plugin, word, count)
+        sql = "INSERT INTO counts VALUES('{}','{}',{})".format(url, word, count)
         cur.execute(sql)
         print(word, count)
 
-for url in plugins:
-    count_from_plugin(url)
+plugins = list(get_plugins())
+print(len(plugins))
+
+for name, url in itertools.islice(plugins, 10):
+    count_from_plugin(name, url)
+
+db.commit()
 
 cur.execute("SELECT word, sum(count) FROM counts GROUP BY word")
-print('\n'.join(cur.fetchall()))
+print("=====Totals=====")
+for row in cur.fetchall():
+    print(row[0], row[1])
 
+db.close()
