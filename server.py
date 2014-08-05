@@ -24,7 +24,8 @@ def show_class_info(classname):
     cur.execute("SELECT count(word) FROM counts WHERE word = :name", dict(name=classname))
     count = cur.fetchone()[0]
     cur.execute("SELECT plugin, context FROM counts WHERE word = :name ORDER BY plugin", dict(name=classname))
-    snippets = [dict(plugin=row[0], code=row[1]) for row in cur.fetchall()]
+    snippets = [dict(plugin=row[0], code=row[1].replace(r'\t', '    ')
+                                               .replace(r'\r','')) for row in cur.fetchall()]
     cur.execute("SELECT plugin FROM counts WHERE word = :name GROUP BY plugin", dict(name=classname))
     plugins = [row[0] for row in cur.fetchall()]
     plugincount = len(plugins)
