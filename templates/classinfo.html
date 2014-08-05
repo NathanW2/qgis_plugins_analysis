@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+</head>
+{% block body %}
+  <h1>{{ name }} ({{ count }})</h1>
+  {% for snippet in snippets %}
+      <div>
+          <pre>{{snippet}}</pre>
+      </div>
+  {% endfor %}
+{% endblock %}
+</html>

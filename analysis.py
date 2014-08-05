@@ -16,22 +16,16 @@ import re
 import sqlite3
 import itertools
 import urllib.request
+import begin
 
 from io import BytesIO
 from xml.dom import minidom
 
+import server
+
 regex = re.compile("Qgs\w+")
 
 db = sqlite3.connect("data.sqlite")
-cur = db.cursor()
-cur.execute("DROP TABLE counts")
-
-cur.execute("CREATE TABLE counts ("
-            "plugin STRING,"
-            "word STRING,"
-            "context STRING"
-            ")")
-
 
 def get_plugins(qgisversion='2.4'):
     """
@@ -48,6 +42,7 @@ def get_plugins(qgisversion='2.4'):
         yield name, url, filename
 
 def count_from_text(name, text):
+    cur = db.cursor()
     for line, linetext in enumerate(text):
         matches = regex.findall(linetext)
         if matches:
@@ -76,22 +71,52 @@ def count_from_plugin(name, url, filename):
 
         count_from_text(name, text)
 
-try:
-    os.mkdir("data")
-except FileExistsError:
-    pass
+def scrape_plugins(count):
 
-plugins = list(get_plugins())
-print(len(plugins))
+    cur = db.cursor()
+    cur.executescript("DROP TABLE counts;"
+                "CREATE TABLE counts ("
+                "plugin STRING,"
+                "word STRING,"
+                "context STRING"
+                ");")
+    try:
+        os.mkdir("data")
+    except FileExistsError:
+        pass
 
-for plugin in itertools.islice(plugins, 10):
-    count_from_plugin(*plugin)
+    plugins = list(get_plugins())
 
-db.commit()
+    if not count:
+        count = len(plugins)
+    else:
+        count = int(count)
 
-cur.execute("SELECT word, count(word) FROM counts GROUP BY word ORDER BY count(word) DESC")
-print("=====Totals=====")
-for row in cur.fetchall():
-    print(row[0], row[1])
+    print("Scanning {} of {}".format(count, len(plugins)))
 
-db.close()
+    for number, plugin in enumerate(itertools.islice(plugins, count)):
+        print(number)
+        count_from_plugin(*plugin)
+
+    db.commit()
+
+    cur.execute("SELECT word, count(word) FROM counts GROUP BY word ORDER BY count(word) DESC")
+    print("=====Totals=====")
+    for row in cur.fetchall():
+        print(row[0], row[1])
+
+    db.close()
+
+@begin.start
+def run(serve_the_things=False,
+        scrape_the_things=True,
+        count=None):
+
+    if serve_the_things:
+        server.run_server(db)
+        return
+
+    if scrape_the_things:
+        scrape_plugins(count)
+
+
