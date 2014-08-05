@@ -13,7 +13,6 @@ import requests
 import os
 import zipfile
 import re
-import collections
 import sqlite3
 import itertools
 import urllib.request
@@ -30,12 +29,16 @@ cur.execute("DROP TABLE counts")
 cur.execute("CREATE TABLE counts ("
             "plugin STRING,"
             "word STRING,"
-            "count INTEGER"
+            "context STRING"
             ")")
 
 
-def get_plugins():
-    plugin_request = requests.get("http://plugins.qgis.org/plugins/plugins.xml?qgis=2.4")
+def get_plugins(qgisversion='2.4'):
+    """
+    Fetch the plugins from plugin repo
+    :return: name, url, filename
+    """
+    plugin_request = requests.get("http://plugins.qgis.org/plugins/plugins.xml?qgis={}".format(qgisversion))
     xml = minidom.parseString(plugin_request.text)
     plugins = xml.getElementsByTagName("pyqgis_plugin")
     for plugin in plugins:
@@ -44,10 +47,20 @@ def get_plugins():
         filename = plugin.getElementsByTagName("file_name")[0].childNodes[0].data
         yield name, url, filename
 
+def count_from_text(name, text):
+    for line, linetext in enumerate(text):
+        matches = regex.findall(linetext)
+        if matches:
+            context = text[line-5:line+5]
+            context = "\n".join(context)
+            for match in matches:
+                sql = "INSERT INTO counts VALUES(:name,:match,:context)"
+                cur.execute(sql, dict(name=name, match=match, context=context))
+
 def count_from_plugin(name, url, filename):
     try:
         content = open(r"data\{}".format(filename), "rb")
-        print("Uses downloaded version of {}".format(name))
+        print("Using pre-downloaded version of {}".format(name))
     except IOError:
         print("Not found so fetching {}".format(url))
         urllib.request.urlretrieve(url, r"data\{}".format(filename))
@@ -61,21 +74,7 @@ def count_from_plugin(name, url, filename):
         with zip.open(name=pyfile) as f:
             text = str(f.read()).split(r'\n')
 
-        for line, linetext in enumerate(text):
-            matches = regex.findall(linetext)
-            if matches:
-                context = text[line-5:line+5]
-                print(matches)
-                print("\n".join(context))
-                words.extend(matches)
-
-    counts = collections.Counter(words)
-
-    for word, count in counts.items():
-        sql = "INSERT INTO counts VALUES('{}','{}',{})".format(url, word, count)
-        cur.execute(sql)
-        print(word, count)
-
+        count_from_text(name, text)
 
 try:
     os.mkdir("data")
@@ -90,7 +89,7 @@ for plugin in itertools.islice(plugins, 10):
 
 db.commit()
 
-cur.execute("SELECT word, sum(count) FROM counts GROUP BY word ORDER BY sum(count) DESC")
+cur.execute("SELECT word, count(word) FROM counts GROUP BY word ORDER BY count(word) DESC")
 print("=====Totals=====")
 for row in cur.fetchall():
     print(row[0], row[1])
