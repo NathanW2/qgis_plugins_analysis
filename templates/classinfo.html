@@ -4,14 +4,25 @@
     <meta charset="UTF-8">
     <title></title>
     <!-- Latest compiled and minified CSS -->
-    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/syntax/tomorrow-night-bright.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type="text/javascript" src="/static/syntax/prettify.js"></script>
+    <script type="text/javascript" src="/static/bootstrap/js/bootstrap.min.js"></script>
 </head>
 {% block body %}
-  <h1>{{ name }} ({{ count }})</h1>
+<script>
+  !function ($) {
+    $(function(){
+      window.prettyPrint && prettyPrint()
+    })
+  }(window.jQuery)
+</script>
+  <h1>{{ name }} was found {{ count }} times in {{ plugincount }} plugins</h1>
   {% for snippet in snippets %}
-      <div>
-          <pre>{{snippet}}</pre>
-      </div>
+      <h4>{{snippet.plugin}}</h4>
+      <pre class="prettyprint languague-python">{{snippet.code}}</pre>
   {% endfor %}
 {% endblock %}
 </html>

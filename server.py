@@ -23,9 +23,16 @@ def show_class_info(classname):
     cur = get_db().cursor()
     cur.execute("SELECT count(word) FROM counts WHERE word = :name", dict(name=classname))
     count = cur.fetchone()[0]
-    cur.execute("SELECT context FROM counts WHERE word = :name", dict(name=classname))
-    snippets = [row[0] for row in cur.fetchall()]
-    return render_template('classinfo.html', name=classname, count=count, snippets=snippets)
+    cur.execute("SELECT plugin, context FROM counts WHERE word = :name ORDER BY plugin", dict(name=classname))
+    snippets = [dict(plugin=row[0], code=row[1]) for row in cur.fetchall()]
+    cur.execute("SELECT plugin FROM counts WHERE word = :name GROUP BY plugin", dict(name=classname))
+    plugins = [row[0] for row in cur.fetchall()]
+    plugincount = len(plugins)
+    return render_template('classinfo.html', name=classname,
+                                             count=count,
+                                             snippets=snippets,
+                                             plugincount=plugincount,
+                                             plugins=plugins)
 
 @app.route('/')
 def hello_world():
