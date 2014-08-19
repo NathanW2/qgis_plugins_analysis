@@ -54,12 +54,12 @@ def count_from_text(name, text):
 
 def count_from_plugin(name, url, filename):
     try:
-        content = open(r"data\{}".format(filename), "rb")
+        content = open(r"data{0}{1}".format(os.sep,filename), "rb")
         print("Using pre-downloaded version of {}".format(name))
     except IOError:
         print("Not found so fetching {}".format(url))
-        urllib.request.urlretrieve(url, r"data\{}".format(filename))
-        content = open(r"data\{}".format(filename), "rb")
+        urllib.request.urlretrieve(url, r"data{0}{1}".format(os.sep,filename))
+        content = open(r"data{0}{1}".format(os.sep,filename), "rb")
 
     zip = zipfile.ZipFile(content)
     names = zip.namelist()
