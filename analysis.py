@@ -74,7 +74,7 @@ def count_from_plugin(name, url, filename):
 def scrape_plugins(count):
 
     cur = db.cursor()
-    cur.executescript("DROP TABLE counts;"
+    cur.executescript("DROP TABLE IF EXISTS counts;"
                 "CREATE TABLE counts ("
                 "plugin STRING,"
                 "word STRING,"
